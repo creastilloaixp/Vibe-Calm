@@ -6,14 +6,22 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../context/UserContext';
+import { useMood } from '../context/MoodContext';
+import { MoodType, MOOD_DEFINITIONS } from '../types/mood';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/theme';
 
 type TabType = 'moods' | 'vibes';
 
-export const DashboardScreen: React.FC = () => {
+interface DashboardScreenProps {
+  navigation?: any;
+}
+
+export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { userName } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('moods');
 
@@ -84,7 +92,7 @@ export const DashboardScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {activeTab === 'moods' ? (
-            <MoodsContent />
+            <MoodsContent navigation={navigation} />
           ) : (
             <VibesContent />
           )}
@@ -94,18 +102,59 @@ export const DashboardScreen: React.FC = () => {
   );
 };
 
-const MoodsContent: React.FC = () => {
-  const moods = [
-    { emoji: '😊', label: 'Happy', color: Colors.success },
-    { emoji: '😌', label: 'Calm', color: Colors.primary },
-    { emoji: '😔', label: 'Sad', color: Colors.accent },
-    { emoji: '😰', label: 'Anxious', color: Colors.warning },
-    { emoji: '😴', label: 'Tired', color: Colors.secondary },
-    { emoji: '😤', label: 'Stressed', color: Colors.error },
+const MoodsContent: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { saveMood, todaysMoods, stats, isLoading } = useMood();
+  const [savingMood, setSavingMood] = useState(false);
+
+  const moods: Array<{ type: MoodType; emoji: string; label: string; color: string }> = [
+    { type: 'happy', emoji: '😊', label: 'Happy', color: Colors.success },
+    { type: 'calm', emoji: '😌', label: 'Calm', color: Colors.primary },
+    { type: 'sad', emoji: '😔', label: 'Sad', color: Colors.accent },
+    { type: 'anxious', emoji: '😰', label: 'Anxious', color: Colors.warning },
+    { type: 'tired', emoji: '😴', label: 'Tired', color: Colors.secondary },
+    { type: 'stressed', emoji: '😤', label: 'Stressed', color: Colors.error },
   ];
+
+  const handleMoodSelect = async (moodType: MoodType) => {
+    try {
+      setSavingMood(true);
+      await saveMood(moodType);
+      Alert.alert(
+        'Mood Saved! ✨',
+        `We've recorded your ${MOOD_DEFINITIONS[moodType].label} mood.`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save your mood. Please try again.');
+    } finally {
+      setSavingMood(false);
+    }
+  };
 
   return (
     <View style={styles.tabContent}>
+      {/* Stats Card */}
+      {stats.totalEntries > 0 && (
+        <View style={styles.statsCard}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.currentStreak}</Text>
+              <Text style={styles.statLabel}>Day Streak 🔥</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.totalEntries}</Text>
+              <Text style={styles.statLabel}>This Week</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>
+                {stats.mostFrequent ? MOOD_DEFINITIONS[stats.mostFrequent].emoji : '😌'}
+              </Text>
+              <Text style={styles.statLabel}>Most Common</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>How are you feeling today?</Text>
         <Text style={styles.sectionSubtitle}>
@@ -114,11 +163,13 @@ const MoodsContent: React.FC = () => {
       </View>
 
       <View style={styles.moodGrid}>
-        {moods.map((mood, index) => (
+        {moods.map((mood) => (
           <TouchableOpacity
-            key={index}
+            key={mood.type}
             style={[styles.moodCard, { borderColor: mood.color }]}
             activeOpacity={0.7}
+            onPress={() => handleMoodSelect(mood.type)}
+            disabled={savingMood}
           >
             <Text style={styles.moodEmoji}>{mood.emoji}</Text>
             <Text style={styles.moodLabel}>{mood.label}</Text>
@@ -127,13 +178,47 @@ const MoodsContent: React.FC = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Moods</Text>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateEmoji}>📊</Text>
-          <Text style={styles.emptyStateText}>
-            Start tracking your moods to see patterns
-          </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Today's Moods</Text>
+          {todaysMoods.length > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('MoodHistory')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        {isLoading ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : todaysMoods.length > 0 ? (
+          <View style={styles.todayMoodsContainer}>
+            {todaysMoods.slice(0, 5).map((mood) => {
+              const moodDef = MOOD_DEFINITIONS[mood.type];
+              const time = new Date(mood.timestamp).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              });
+
+              return (
+                <View key={mood.id} style={styles.moodEntryCard}>
+                  <Text style={styles.moodEntryEmoji}>{moodDef.emoji}</Text>
+                  <View style={styles.moodEntryInfo}>
+                    <Text style={styles.moodEntryLabel}>{moodDef.label}</Text>
+                    <Text style={styles.moodEntryTime}>{time}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateEmoji}>📊</Text>
+            <Text style={styles.emptyStateText}>
+              Start tracking your moods to see patterns
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -349,5 +434,74 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.md,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  statsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
+    ...Shadows.medium,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: Typography.fontSize.xxl,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+  statEmoji: {
+    fontSize: Typography.fontSize.xxl,
+    marginBottom: Spacing.xs,
+  },
+  statLabel: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  viewAllText: {
+    fontSize: Typography.fontSize.md,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  todayMoodsContainer: {
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  moodEntryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...Shadows.small,
+  },
+  moodEntryEmoji: {
+    fontSize: 32,
+    marginRight: Spacing.md,
+  },
+  moodEntryInfo: {
+    flex: 1,
+  },
+  moodEntryLabel: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  moodEntryTime: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
   },
 });

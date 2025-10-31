@@ -5,6 +5,7 @@ import { useUser } from '../context/UserContext';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { MoodHistoryScreen } from '../screens/MoodHistoryScreen';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors } from '../constants/theme';
 
@@ -12,6 +13,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Welcome: undefined;
   Dashboard: undefined;
+  MoodHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -39,6 +41,11 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen
+          name="MoodHistory"
+          component={MoodHistoryScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
