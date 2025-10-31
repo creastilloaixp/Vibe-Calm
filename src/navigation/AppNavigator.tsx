@@ -2,7 +2,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useUser } from '../context/UserContext';
-import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { OnboardingWelcomeScreen } from '../screens/onboarding/OnboardingWelcomeScreen';
+import { OnboardingGoalsScreen } from '../screens/onboarding/OnboardingGoalsScreen';
+import { OnboardingExperienceScreen } from '../screens/onboarding/OnboardingExperienceScreen';
+import { OnboardingTimeScreen } from '../screens/onboarding/OnboardingTimeScreen';
+import { OnboardingNameScreen } from '../screens/onboarding/OnboardingNameScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { MoodHistoryScreen } from '../screens/MoodHistoryScreen';
@@ -10,7 +14,11 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors } from '../constants/theme';
 
 export type RootStackParamList = {
-  Onboarding: undefined;
+  OnboardingWelcome: undefined;
+  OnboardingGoals: undefined;
+  OnboardingExperience: undefined;
+  OnboardingTime: undefined;
+  OnboardingName: undefined;
   Welcome: undefined;
   Dashboard: undefined;
   MoodHistory: undefined;
@@ -36,9 +44,16 @@ export const AppNavigator: React.FC = () => {
           headerShown: false,
           animation: 'fade',
         }}
-        initialRouteName={hasCompletedOnboarding ? 'Dashboard' : 'Onboarding'}
+        initialRouteName={hasCompletedOnboarding ? 'Dashboard' : 'OnboardingWelcome'}
       >
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        {/* Onboarding Flow */}
+        <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
+        <Stack.Screen name="OnboardingGoals" component={OnboardingGoalsScreen} />
+        <Stack.Screen name="OnboardingExperience" component={OnboardingExperienceScreen} />
+        <Stack.Screen name="OnboardingTime" component={OnboardingTimeScreen} />
+        <Stack.Screen name="OnboardingName" component={OnboardingNameScreen} />
+
+        {/* Welcome & Main App */}
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen

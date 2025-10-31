@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../context/UserContext';
 import { useMood } from '../context/MoodContext';
 import { MoodType, MOOD_DEFINITIONS } from '../types/mood';
+import { MoodNoteModal } from '../components/MoodNoteModal';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/theme';
 
 type TabType = 'moods' | 'vibes';
@@ -105,6 +106,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
 const MoodsContent: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { saveMood, todaysMoods, stats, isLoading } = useMood();
   const [savingMood, setSavingMood] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
+  const [showNoteModal, setShowNoteModal] = useState(false);
 
   const moods: Array<{ type: MoodType; emoji: string; label: string; color: string }> = [
     { type: 'happy', emoji: '😊', label: 'Happy', color: Colors.success },
@@ -115,20 +118,54 @@ const MoodsContent: React.FC<{ navigation: any }> = ({ navigation }) => {
     { type: 'stressed', emoji: '😤', label: 'Stressed', color: Colors.error },
   ];
 
-  const handleMoodSelect = async (moodType: MoodType) => {
+  const handleMoodSelect = (moodType: MoodType) => {
+    setSelectedMood(moodType);
+    setShowNoteModal(true);
+  };
+
+  const handleSaveMoodWithNote = async (note: string) => {
+    if (!selectedMood) return;
+
     try {
       setSavingMood(true);
-      await saveMood(moodType);
+      await saveMood(selectedMood, note || undefined);
+      setShowNoteModal(false);
       Alert.alert(
         'Mood Saved! ✨',
-        `We've recorded your ${MOOD_DEFINITIONS[moodType].label} mood.`,
+        `We've recorded your ${MOOD_DEFINITIONS[selectedMood].label} mood.`,
         [{ text: 'OK' }]
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to save your mood. Please try again.');
     } finally {
       setSavingMood(false);
+      setSelectedMood(null);
     }
+  };
+
+  const handleSkipNote = async () => {
+    if (!selectedMood) return;
+
+    try {
+      setSavingMood(true);
+      await saveMood(selectedMood);
+      setShowNoteModal(false);
+      Alert.alert(
+        'Mood Saved! ✨',
+        `We've recorded your ${MOOD_DEFINITIONS[selectedMood].label} mood.`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save your mood. Please try again.');
+    } finally {
+      setSavingMood(false);
+      setSelectedMood(null);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowNoteModal(false);
+    setSelectedMood(null);
   };
 
   return (
@@ -220,6 +257,15 @@ const MoodsContent: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         )}
       </View>
+
+      {/* Mood Note Modal */}
+      <MoodNoteModal
+        visible={showNoteModal}
+        moodType={selectedMood}
+        onSave={handleSaveMoodWithNote}
+        onSkip={handleSkipNote}
+        onClose={handleCloseModal}
+      />
     </View>
   );
 };
