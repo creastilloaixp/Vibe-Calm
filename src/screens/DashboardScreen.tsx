@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../context/UserContext';
 import { useMood } from '../context/MoodContext';
+import { useMeditation } from '../context/MeditationContext';
 import { MoodType, MOOD_DEFINITIONS } from '../types/mood';
 import { MoodNoteModal } from '../components/MoodNoteModal';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/theme';
@@ -95,7 +96,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
           {activeTab === 'moods' ? (
             <MoodsContent navigation={navigation} />
           ) : (
-            <VibesContent />
+            <VibesContent navigation={navigation} />
           )}
         </ScrollView>
       </LinearGradient>
@@ -270,55 +271,103 @@ const MoodsContent: React.FC<{ navigation: any }> = ({ navigation }) => {
   );
 };
 
-const VibesContent: React.FC = () => {
-  const vibes = [
-    { emoji: '🌅', label: 'Morning Energy', duration: '10 min' },
-    { emoji: '🌙', label: 'Night Calm', duration: '15 min' },
-    { emoji: '🌊', label: 'Ocean Waves', duration: '20 min' },
-    { emoji: '🌳', label: 'Forest Walk', duration: '12 min' },
-    { emoji: '☁️', label: 'Cloud Nine', duration: '8 min' },
-    { emoji: '⭐', label: 'Starry Night', duration: '18 min' },
-  ];
+const VibesContent: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { availableSessions, stats, todaysSessions, getFavoriteStatus, toggleFavorite } = useMeditation();
+
+  const handleStartSession = (session: any) => {
+    navigation.navigate('MeditationTimer', { session });
+  };
 
   return (
     <View style={styles.tabContent}>
+      {/* Stats Card */}
+      {stats.totalSessions > 0 && (
+        <View style={styles.statsCard}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.currentStreak}</Text>
+              <Text style={styles.statLabel}>Day Streak 🔥</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.totalMinutes}</Text>
+              <Text style={styles.statLabel}>Minutes</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.totalSessions}</Text>
+              <Text style={styles.statLabel}>Sessions</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Choose your vibe</Text>
+        <Text style={styles.sectionTitle}>Meditation Sessions</Text>
         <Text style={styles.sectionSubtitle}>
-          Curated experiences to match your mood
+          Guided experiences for mindfulness and peace
         </Text>
       </View>
 
       <View style={styles.vibesGrid}>
-        {vibes.map((vibe, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.vibeCard}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={[Colors.primaryLight, Colors.primary]}
-              style={styles.vibeCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+        {availableSessions.map((session) => {
+          const isFavorite = getFavoriteStatus(session.id);
+
+          return (
+            <TouchableOpacity
+              key={session.id}
+              style={styles.vibeCard}
+              onPress={() => handleStartSession(session)}
+              activeOpacity={0.7}
             >
-              <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
-              <Text style={styles.vibeLabel}>{vibe.label}</Text>
-              <Text style={styles.vibeDuration}>{vibe.duration}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
+              <LinearGradient
+                colors={[session.color + '90', session.color]}
+                style={styles.vibeCardGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.vibeEmoji}>{session.emoji}</Text>
+                <View style={styles.vibeInfo}>
+                  <Text style={styles.vibeLabel}>{session.title}</Text>
+                  <Text style={styles.vibeDuration}>{session.duration} min</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(session.id);
+                  }}
+                  style={styles.favoriteButton}
+                >
+                  <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Continue Your Journey</Text>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateEmoji}>🎯</Text>
-          <Text style={styles.emptyStateText}>
-            Your progress will appear here
-          </Text>
+      {todaysSessions.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's Sessions</Text>
+          <View style={styles.todaySessionsContainer}>
+            {todaysSessions.slice(0, 3).map((session) => {
+              const time = new Date(session.completedAt).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              });
+              const minutes = Math.floor(session.duration / 60);
+
+              return (
+                <View key={session.id} style={styles.sessionEntryCard}>
+                  <Text style={styles.sessionEntryEmoji}>✓</Text>
+                  <View style={styles.sessionEntryInfo}>
+                    <Text style={styles.sessionEntryLabel}>{session.sessionTitle}</Text>
+                    <Text style={styles.sessionEntryTime}>{time} • {minutes} min</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 };
@@ -546,6 +595,44 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   moodEntryTime: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
+  },
+  vibeInfo: {
+    flex: 1,
+  },
+  favoriteButton: {
+    padding: Spacing.xs,
+  },
+  favoriteIcon: {
+    fontSize: 20,
+  },
+  todaySessionsContainer: {
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  sessionEntryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...Shadows.small,
+  },
+  sessionEntryEmoji: {
+    fontSize: 28,
+    marginRight: Spacing.md,
+  },
+  sessionEntryInfo: {
+    flex: 1,
+  },
+  sessionEntryLabel: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  sessionEntryTime: {
     fontSize: Typography.fontSize.sm,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,

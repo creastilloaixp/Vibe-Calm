@@ -10,8 +10,10 @@ import { OnboardingNameScreen } from '../screens/onboarding/OnboardingNameScreen
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { MoodHistoryScreen } from '../screens/MoodHistoryScreen';
+import { MeditationTimerScreen } from '../screens/MeditationTimerScreen';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors } from '../constants/theme';
+import { MeditationSession } from '../types/meditation';
 
 export type RootStackParamList = {
   OnboardingWelcome: undefined;
@@ -22,6 +24,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Dashboard: undefined;
   MoodHistory: undefined;
+  MeditationTimer: { session: MeditationSession };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -60,6 +63,11 @@ export const AppNavigator: React.FC = () => {
           name="MoodHistory"
           component={MoodHistoryScreen}
           options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="MeditationTimer"
+          component={MeditationTimerScreen}
+          options={{ animation: 'slide_from_bottom' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
